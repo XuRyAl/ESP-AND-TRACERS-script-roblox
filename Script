@@ -256,29 +256,374 @@ game.Players.PlayerAdded:Connect(function(newplr)
                     lines.line12.From = Vector2.new(Bottom4.X, Bottom4.Y)
                     lines.line12.To = Vector2.new(Top4.X, Top4.Y)
 
-                    --// Tracer:
-                    if Tracers then
-                        local trace = camera:WorldToViewportPoint((newplr.Character.HumanoidRootPart.CFrame * CFrame.new(0, -Size.Y, 0)).p)
-                        lines.Tracer.From = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y)
-                        lines.Tracer.To = Vector2.new(trace.X, trace.Y)
-                    end
+-- Roblox ESP & Tracers Menu (XuRyAl ESP + палитра цветов)
+-- Кидай как LocalScript в StarterPlayerScripts
 
-                    --// Teamcheck:
-                    if Team_Check then
-                        if newplr.TeamColor == player.TeamColor then
-                            for u, x in pairs(lines) do
-                                x.Color = green
-                            end
-                        else 
-                            for u, x in pairs(lines) do
-                                x.Color = red
-                            end
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+-- Цвета/размеры
+local MAIN_COLOR = Color3.fromRGB(38, 60, 114)
+local BUTTON_COLOR = Color3.fromRGB(71, 125, 194)
+local ACCENT_COLOR = Color3.fromRGB(255, 255, 255)
+local BUTTON_RADIUS = UDim.new(0, 16)
+local MENU_WIDTH, MENU_HEIGHT = 300, 340
+local BUTTON_HEIGHT = 38
+
+-- === ESP & TRACERS (XuRyAl Script, с удалением линий и динамическим цветом) ===
+getgenv().on = false
+getgenv().Tracers = false
+
+-- Палитра (начальные значения)
+local Box_Color = Color3.fromRGB(0, 255, 50)
+local Tracer_Color = Color3.fromRGB(0, 255, 50)
+
+local Box_Thickness = 1.4
+local Box_Transparency = 1
+
+local Tracer_Thickness = 1.4
+local Tracer_Transparency = 1
+
+local Autothickness = false
+local Team_Check = false
+local red = Color3.fromRGB(227, 52, 52)
+local green = Color3.fromRGB(88, 217, 24)
+
+local workspace = game:GetService("Workspace")
+local player = game:GetService("Players").LocalPlayer
+local camera = workspace.CurrentCamera
+
+local ESPConnections = {}
+local ALL_DRAWINGS = {} -- Храним все линии для удаления
+
+local function NewLine(isTracer)
+    local line = Drawing.new("Line")
+    line.Visible = false
+    line.From = Vector2.new(0, 0)
+    line.To = Vector2.new(1, 1)
+    if isTracer then
+        line.Color = Tracer_Color
+        line.Thickness = Tracer_Thickness
+        line.Transparency = Tracer_Transparency
+    else
+        line.Color = Box_Color
+        line.Thickness = Box_Thickness
+        line.Transparency = Box_Transparency
+    end
+    table.insert(ALL_DRAWINGS, line)
+    return line
+end
+
+local function clearConnectionsAndDrawings()
+    for _, v in ipairs(ESPConnections) do
+        v:Disconnect()
+    end
+    ESPConnections = {}
+    for _, obj in ipairs(ALL_DRAWINGS) do
+        pcall(function() obj:Remove() end)
+    end
+    ALL_DRAWINGS = {}
+end
+
+local function createESPFor(v)
+    local lines = {
+        line1 = NewLine(), line2 = NewLine(), line3 = NewLine(), line4 = NewLine(),
+        line5 = NewLine(), line6 = NewLine(), line7 = NewLine(), line8 = NewLine(),
+        line9 = NewLine(), line10 = NewLine(), line11 = NewLine(), line12 = NewLine(),
+        Tracer = NewLine(true)
+    }
+    local connection
+    connection = game:GetService("RunService").RenderStepped:Connect(function()
+        if getgenv().on and v.Character ~= nil and v.Character:FindFirstChild("Humanoid") and v.Character:FindFirstChild("HumanoidRootPart") and v.Name ~= player.Name and v.Character.Humanoid.Health > 0 then
+            local pos, vis = camera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
+            if vis then
+                -- Обновляем цвета (вдруг пользователь поменял)
+                for k, x in pairs(lines) do
+                    if k == "Tracer" then
+                        x.Color = Tracer_Color
+                        x.Thickness = Tracer_Thickness
+                        x.Transparency = Tracer_Transparency
+                    else
+                        x.Color = Box_Color
+                        x.Thickness = Box_Thickness
+                        x.Transparency = Box_Transparency
+                    end
+                end
+
+                local Scale = v.Character.Head.Size.Y / 2
+                local Size = Vector3.new(2, 3, 1.5) * (Scale * 2)
+                local Top1 = camera:WorldToViewportPoint((v.Character.HumanoidRootPart.CFrame * CFrame.new(-Size.X, Size.Y, -Size.Z)).p)
+                local Top2 = camera:WorldToViewportPoint((v.Character.HumanoidRootPart.CFrame * CFrame.new(-Size.X, Size.Y, Size.Z)).p)
+                local Top3 = camera:WorldToViewportPoint((v.Character.HumanoidRootPart.CFrame * CFrame.new(Size.X, Size.Y, Size.Z)).p)
+                local Top4 = camera:WorldToViewportPoint((v.Character.HumanoidRootPart.CFrame * CFrame.new(Size.X, Size.Y, -Size.Z)).p)
+                local Bottom1 = camera:WorldToViewportPoint((v.Character.HumanoidRootPart.CFrame * CFrame.new(-Size.X, -Size.Y, -Size.Z)).p)
+                local Bottom2 = camera:WorldToViewportPoint((v.Character.HumanoidRootPart.CFrame * CFrame.new(-Size.X, -Size.Y, Size.Z)).p)
+                local Bottom3 = camera:WorldToViewportPoint((v.Character.HumanoidRootPart.CFrame * CFrame.new(Size.X, -Size.Y, Size.Z)).p)
+                local Bottom4 = camera:WorldToViewportPoint((v.Character.HumanoidRootPart.CFrame * CFrame.new(Size.X, -Size.Y, -Size.Z)).p)
+                -- Top
+                lines.line1.From, lines.line1.To = Vector2.new(Top1.X, Top1.Y), Vector2.new(Top2.X, Top2.Y)
+                lines.line2.From, lines.line2.To = Vector2.new(Top2.X, Top2.Y), Vector2.new(Top3.X, Top3.Y)
+                lines.line3.From, lines.line3.To = Vector2.new(Top3.X, Top3.Y), Vector2.new(Top4.X, Top4.Y)
+                lines.line4.From, lines.line4.To = Vector2.new(Top4.X, Top4.Y), Vector2.new(Top1.X, Top1.Y)
+                -- Bottom
+                lines.line5.From, lines.line5.To = Vector2.new(Bottom1.X, Bottom1.Y), Vector2.new(Bottom2.X, Bottom2.Y)
+                lines.line6.From, lines.line6.To = Vector2.new(Bottom2.X, Bottom2.Y), Vector2.new(Bottom3.X, Bottom3.Y)
+                lines.line7.From, lines.line7.To = Vector2.new(Bottom3.X, Bottom3.Y), Vector2.new(Bottom4.X, Bottom4.Y)
+                lines.line8.From, lines.line8.To = Vector2.new(Bottom4.X, Bottom4.Y), Vector2.new(Bottom1.X, Bottom1.Y)
+                -- Sides
+                lines.line9.From, lines.line9.To = Vector2.new(Bottom1.X, Bottom1.Y), Vector2.new(Top1.X, Top1.Y)
+                lines.line10.From, lines.line10.To = Vector2.new(Bottom2.X, Bottom2.Y), Vector2.new(Top2.X, Top2.Y)
+                lines.line11.From, lines.line11.To = Vector2.new(Bottom3.X, Bottom3.Y), Vector2.new(Top3.X, Top3.Y)
+                lines.line12.From, lines.line12.To = Vector2.new(Bottom4.X, Bottom4.Y), Vector2.new(Top4.X, Top4.Y)
+                -- Tracer
+                if getgenv().Tracers then
+                    local trace = camera:WorldToViewportPoint((v.Character.HumanoidRootPart.CFrame * CFrame.new(0, -Size.Y, 0)).p)
+                    lines.Tracer.From = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y)
+                    lines.Tracer.To = Vector2.new(trace.X, trace.Y)
+                end
+                if Team_Check then
+                    local clr = (v.TeamColor == player.TeamColor) and green or red
+                    for _, x in pairs(lines) do x.Color = clr end
+                end
+                if Autothickness then
+                    local distance = (player.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).magnitude
+                    local value = math.clamp(1/distance*100, 0.1, 4)
+                    for _, x in pairs(lines) do x.Thickness = value end
+                else
+                    for _, x in pairs(lines) do 
+                        if _ == "Tracer" then
+                            x.Thickness = Tracer_Thickness
+                        else
+                            x.Thickness = Box_Thickness
                         end
                     end
+                end
+                for k, x in pairs(lines) do
+                    if k ~= "Tracer" then x.Visible = true end
+                end
+                lines.Tracer.Visible = getgenv().Tracers
+            else
+                for _, x in pairs(lines) do x.Visible = false end
+            end
+        else
+            for _, x in pairs(lines) do x.Visible = false end
+            if not game.Players:FindFirstChild(v.Name) then connection:Disconnect() end
+        end
+    end)
+    table.insert(ESPConnections, connection)
+end
 
-                    --// Autothickness:
-                    if Autothickness then
-                        local distance = (player.Character.HumanoidRootPart.Position - newplr.Character.HumanoidRootPart.Position).magnitude
+local function setupAllPlayersESP()
+    clearConnectionsAndDrawings()
+    for _, v in ipairs(game.Players:GetPlayers()) do
+        if v ~= player then
+            createESPFor(v)
+        end
+    end
+end
+
+game.Players.PlayerAdded:Connect(function(newplr)
+    if newplr ~= player then
+        createESPFor(newplr)
+    end
+end)
+
+-- === GUI ===
+local gui = Instance.new("ScreenGui")
+gui.Name = "ESPMenuGUI"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.Parent = game:GetService("CoreGui")
+
+local menu = Instance.new("Frame")
+menu.Size = UDim2.new(0, MENU_WIDTH, 0, MENU_HEIGHT)
+menu.Position = UDim2.new(0.13, 0, 0.2, 0)
+menu.BackgroundColor3 = MAIN_COLOR
+menu.Visible = false
+menu.Parent = gui
+menu.Active = true
+local c = Instance.new("UICorner", menu)
+c.CornerRadius = BUTTON_RADIUS
+
+local title = Instance.new("TextLabel", menu)
+title.Size = UDim2.new(1, 0, 0, 44)
+title.BackgroundTransparency = 1
+title.Text = "ESP & Tracers"
+title.TextColor3 = ACCENT_COLOR
+title.Font = Enum.Font.GothamSemibold
+title.TextSize = 24
+
+local espButton = Instance.new("TextButton", menu)
+espButton.Size = UDim2.new(1, -32, 0, BUTTON_HEIGHT)
+espButton.Position = UDim2.new(0, 16, 0, 56)
+espButton.BackgroundColor3 = BUTTON_COLOR
+espButton.TextColor3 = ACCENT_COLOR
+espButton.Font = Enum.Font.GothamBold
+espButton.TextSize = 18
+espButton.Text = "Включить ESP"
+espButton.AutoButtonColor = false
+espButton.BorderSizePixel = 0
+local espBtnCorner = Instance.new("UICorner", espButton)
+espBtnCorner.CornerRadius = BUTTON_RADIUS
+
+espButton.MouseEnter:Connect(function()
+    TweenService:Create(espButton, TweenInfo.new(0.17), {BackgroundColor3 = MAIN_COLOR}):Play()
+end)
+espButton.MouseLeave:Connect(function()
+    TweenService:Create(espButton, TweenInfo.new(0.17), {BackgroundColor3 = BUTTON_COLOR}):Play()
+end)
+
+local trcButton = Instance.new("TextButton", menu)
+trcButton.Size = UDim2.new(1, -32, 0, BUTTON_HEIGHT)
+trcButton.Position = UDim2.new(0, 16, 0, 104)
+trcButton.BackgroundColor3 = BUTTON_COLOR
+trcButton.TextColor3 = ACCENT_COLOR
+trcButton.Font = Enum.Font.GothamBold
+trcButton.TextSize = 18
+trcButton.Text = "Включить Tracers"
+trcButton.AutoButtonColor = false
+trcButton.BorderSizePixel = 0
+local trcBtnCorner = Instance.new("UICorner", trcButton)
+trcBtnCorner.CornerRadius = BUTTON_RADIUS
+trcButton.MouseEnter:Connect(function() TweenService:Create(trcButton, TweenInfo.new(0.17), {BackgroundColor3 = MAIN_COLOR}):Play() end)
+trcButton.MouseLeave:Connect(function() TweenService:Create(trcButton, TweenInfo.new(0.17), {BackgroundColor3 = BUTTON_COLOR}):Play() end)
+
+-- Color Pickers
+local boxColorBtn = Instance.new("TextButton", menu)
+boxColorBtn.Size = UDim2.new(0.45, -10, 0, BUTTON_HEIGHT)
+boxColorBtn.Position = UDim2.new(0.05, 0, 0, 160)
+boxColorBtn.BackgroundColor3 = Box_Color
+boxColorBtn.Text = "Box Color"
+boxColorBtn.TextColor3 = Color3.fromRGB(30,30,30)
+boxColorBtn.Font = Enum.Font.GothamBold
+boxColorBtn.TextSize = 16
+boxColorBtn.AutoButtonColor = false
+local boxColorBtnCorner = Instance.new("UICorner", boxColorBtn)
+boxColorBtnCorner.CornerRadius = BUTTON_RADIUS
+
+local tracerColorBtn = Instance.new("TextButton", menu)
+tracerColorBtn.Size = UDim2.new(0.45, -10, 0, BUTTON_HEIGHT)
+tracerColorBtn.Position = UDim2.new(0.5, 10, 0, 160)
+tracerColorBtn.BackgroundColor3 = Tracer_Color
+tracerColorBtn.Text = "Tracer Color"
+tracerColorBtn.TextColor3 = Color3.fromRGB(30,30,30)
+tracerColorBtn.Font = Enum.Font.GothamBold
+tracerColorBtn.TextSize = 16
+tracerColorBtn.AutoButtonColor = false
+local tracerColorBtnCorner = Instance.new("UICorner", tracerColorBtn)
+tracerColorBtnCorner.CornerRadius = BUTTON_RADIUS
+
+-- Мини палитра (6 цветов)
+local palette = {
+    Color3.fromRGB(0,255,50),
+    Color3.fromRGB(255,0,0),
+    Color3.fromRGB(0,140,255),
+    Color3.fromRGB(255,255,0),
+    Color3.fromRGB(255,128,0),
+    Color3.fromRGB(255,255,255),
+}
+
+local function showPalette(btn, callback)
+    -- Удаляем старую палитру если есть
+    if menu:FindFirstChild("PaletteFrame") then menu.PaletteFrame:Destroy() end
+    local palFrame = Instance.new("Frame", menu)
+    palFrame.Name = "PaletteFrame"
+    palFrame.BackgroundTransparency = 0.1
+    palFrame.Size = UDim2.new(0, #palette*36 + 12, 0, 44)
+    palFrame.Position = UDim2.new(0, btn.Position.X.Offset-6, 0, btn.Position.Y.Offset+BUTTON_HEIGHT+6)
+    palFrame.BackgroundColor3 = MAIN_COLOR
+    palFrame.ZIndex = 100
+    local palCorner = Instance.new("UICorner", palFrame)
+    palCorner.CornerRadius = UDim.new(0, 14)
+    for i, clr in ipairs(palette) do
+        local cbtn = Instance.new("TextButton", palFrame)
+        cbtn.Size = UDim2.new(0,34,0,34)
+        cbtn.Position = UDim2.new(0, 6+(i-1)*36, 0, 5)
+        cbtn.BackgroundColor3 = clr
+        cbtn.Text = ""
+        cbtn.ZIndex = 101
+        local cbtnCorner = Instance.new("UICorner", cbtn)
+        cbtnCorner.CornerRadius = UDim.new(1,0)
+        cbtn.MouseButton1Click:Connect(function()
+            callback(clr)
+            palFrame:Destroy()
+        end)
+    end
+end
+
+boxColorBtn.MouseButton1Click:Connect(function()
+    showPalette(boxColorBtn, function(clr)
+        Box_Color = clr
+        boxColorBtn.BackgroundColor3 = clr
+    end)
+end)
+tracerColorBtn.MouseButton1Click:Connect(function()
+    showPalette(tracerColorBtn, function(clr)
+        Tracer_Color = clr
+        tracerColorBtn.BackgroundColor3 = clr
+    end)
+end)
+
+local info = Instance.new("TextLabel", menu)
+info.Size = UDim2.new(1, -32, 0, 34)
+info.Position = UDim2.new(0, 16, 0, 220)
+info.BackgroundTransparency = 1
+info.TextColor3 = ACCENT_COLOR
+info.Font = Enum.Font.Gotham
+info.TextSize = 14
+info.Text = "Menu by Copilot\nScript by XuRyAl"
+info.TextWrapped = true
+
+local menuButton = Instance.new("TextButton")
+menuButton.Size = UDim2.new(0, 48, 0, 48)
+menuButton.Position = UDim2.new(0, 20, 0.4, -24)
+menuButton.BackgroundColor3 = MAIN_COLOR
+menuButton.Text = "≡"
+menuButton.Font = Enum.Font.GothamBlack
+menuButton.TextSize = 36
+menuButton.TextColor3 = ACCENT_COLOR
+menuButton.Parent = gui
+local c2 = Instance.new("UICorner", menuButton)
+c2.CornerRadius = BUTTON_RADIUS
+
+-- Анимация меню (открытие/закрытие)
+local menuOpen = false
+menuButton.MouseButton1Click:Connect(function()
+    menuOpen = not menuOpen
+    if menuOpen then
+        menu.Visible = true
+        menu.Size = UDim2.new(0, 0, 0, MENU_HEIGHT)
+        TweenService:Create(menu, TweenInfo.new(0.25, Enum.EasingStyle.Back), {Size = UDim2.new(0, MENU_WIDTH, 0, MENU_HEIGHT)}):Play()
+    else
+        TweenService:Create(menu, TweenInfo.new(0.18, Enum.EasingStyle.Quad), {Size = UDim2.new(0, 0, 0, MENU_HEIGHT)}):Play()
+        wait(0.18)
+        menu.Visible = false
+        if menu:FindFirstChild("PaletteFrame") then menu.PaletteFrame:Destroy() end
+    end
+end)
+
+-- Включение/выключение ESP
+espButton.MouseButton1Click:Connect(function()
+    getgenv().on = not getgenv().on
+    espButton.Text = getgenv().on and "Выключить ESP" or "Включить ESP"
+    if getgenv().on then
+        setupAllPlayersESP()
+    else
+        clearConnectionsAndDrawings()
+        getgenv().Tracers = false
+        trcButton.Text = "Включить Tracers"
+    end
+end)
+
+trcButton.MouseButton1Click:Connect(function()
+    if not getgenv().on then
+        getgenv().on = true
+        espButton.Text = "Выключить ESP"
+        setupAllPlayersESP()
+    end
+    getgenv().Tracers = not getgenv().Tracers
+    trcButton.Text = getgenv().Tracers and "Выключить Tracers" or "Включить Tracers"
+end)              local distance = (player.Character.HumanoidRootPart.Position - newplr.Character.HumanoidRootPart.Position).magnitude
                         local value = math.clamp(1/distance*100, 0.1, 4) --0.1 is min thickness, 6 is max
                         for u, x in pairs(lines) do
                             x.Thickness = value
